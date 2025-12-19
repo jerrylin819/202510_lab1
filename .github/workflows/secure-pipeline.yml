@@ -284,7 +284,7 @@ jobs:
   security-summary:
     runs-on: ubuntu-latest
     name: 安全掃描總結
-    needs: [sast-scan, sca-scan, container-scan, iac-scan, secret-scan]
+    needs: [sast-scan, sca-scan, container-scan, iac-scan, secret-scan, app-test]
     if: always()
     outputs:
       all-passed: ${{ steps.check-status.outputs.all-passed }}
@@ -302,6 +302,7 @@ jobs:
           echo "3. 容器映像掃描 - Trivy: ${{ needs.container-scan.result }}"
           echo "4. IaC 安全檢查 - Checkov: ${{ needs.iac-scan.result }}"
           echo "5. Secret 掃描 - Gitleaks: ${{ needs.secret-scan.result }}"
+          echo "6. Docker 映像建置與健康檢查: ${{ needs.app-test.result }}"
           echo ""
           echo "📊 詳細結果請查看："
           echo "   - Security 標籤 → Code scanning alerts"
@@ -313,7 +314,8 @@ jobs:
              [[ "${{ needs.sca-scan.result }}" == "failure" ]] || \
              [[ "${{ needs.container-scan.result }}" == "failure" ]] || \
              [[ "${{ needs.iac-scan.result }}" == "failure" ]] || \
-             [[ "${{ needs.secret-scan.result }}" == "failure" ]]; then
+             [[ "${{ needs.secret-scan.result }}" == "failure" ]] || \
+             [[ "${{ needs.app-test.result }}" == "failure" ]]; then
             echo "⚠️  警告：部分掃描發現問題，請檢查詳細報告"
             echo "all-passed=false" >> $GITHUB_OUTPUT
           else
@@ -417,3 +419,38 @@ jobs:
           echo "網站 URL: ${{ steps.deployment.outputs.page_url }}"
           echo ""
           echo "安全狀態: ${{ needs.security-summary.outputs.all-passed }}"
+
+# 10. Docker 映像建置與健康檢查
+  app-test:
+    runs-on: ubuntu-latest
+    name: Docker 映像建置與健康檢查
+    steps:
+      - name: Checkout 代碼
+        uses: actions/checkout@v4
+
+      - name: 設定 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 建置測試用 Docker 映像
+        run: |
+          docker build -t tic-tac-toe-ci:${{ github.sha }} .
+
+      - name: 啟動容器並等待健康檢查
+        run: |
+          docker run -d --name tic-tac-toe-ci -p 8080:8080 tic-tac-toe-ci:${{ github.sha }}
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8080 > /tmp/health.txt; then
+              cat /tmp/health.txt
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "容器在 60 秒內未通過健康檢查"
+          docker logs tic-tac-toe-ci || true
+          exit 1
+
+      - name: 清理測試資源
+        if: always()
+        run: |
+          docker rm -f tic-tac-toe-ci || true
+          docker image rm tic-tac-toe-ci:${{ github.sha }} || true
