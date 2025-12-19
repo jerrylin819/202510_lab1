@@ -1,5 +1,5 @@
 # 使用輕量級的 Nginx Alpine 映像
-FROM nginx:alpine3.18-perl
+FROM nginx:mainline-alpine3.23-slim
 
 # 維護者資訊
 LABEL org.opencontainers.image.source="https://github.com/YOUR_USERNAME/YOUR_REPO"
@@ -8,6 +8,9 @@ LABEL org.opencontainers.image.licenses="MIT"
 
 # 移除預設的 Nginx 網頁
 RUN rm -rf /usr/share/nginx/html/*
+
+# 升級基底套件以獲取最新安全修補
+RUN apk --no-cache upgrade
 
 # 複製靜態檔案到 Nginx 目錄
 COPY app/ /usr/share/nginx/html/

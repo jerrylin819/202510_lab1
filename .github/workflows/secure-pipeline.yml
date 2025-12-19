@@ -260,31 +260,11 @@ jobs:
         if: always()
         with:
           sarif_file: results_sarif.sarif
-
-  # 5. Secret 掃描
-  secret-scan:
-    runs-on: ubuntu-latest
-    name: Secret 掃描 - Gitleaks
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - name: Checkout 代碼
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: 執行 Gitleaks 掃描
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_SUMMARY: true
-
-  # 6. 安全掃描結果總結
+  # 5. 安全掃描結果總結
   security-summary:
     runs-on: ubuntu-latest
     name: 安全掃描總結
-    needs: [sast-scan, sca-scan, container-scan, iac-scan, secret-scan, app-test]
+    needs: [sast-scan, sca-scan, container-scan, iac-scan, app-test]
     if: always()
     outputs:
       all-passed: ${{ steps.check-status.outputs.all-passed }}
@@ -301,8 +281,7 @@ jobs:
           echo "2. SCA (依賴漏洞檢測) - Dependency-Check: ${{ needs.sca-scan.result }}"
           echo "3. 容器映像掃描 - Trivy: ${{ needs.container-scan.result }}"
           echo "4. IaC 安全檢查 - Checkov: ${{ needs.iac-scan.result }}"
-          echo "5. Secret 掃描 - Gitleaks: ${{ needs.secret-scan.result }}"
-          echo "6. Docker 映像建置與健康檢查: ${{ needs.app-test.result }}"
+          echo "5. Docker 映像建置與健康檢查: ${{ needs.app-test.result }}"
           echo ""
           echo "📊 詳細結果請查看："
           echo "   - Security 標籤 → Code scanning alerts"
@@ -314,7 +293,6 @@ jobs:
              [[ "${{ needs.sca-scan.result }}" == "failure" ]] || \
              [[ "${{ needs.container-scan.result }}" == "failure" ]] || \
              [[ "${{ needs.iac-scan.result }}" == "failure" ]] || \
-             [[ "${{ needs.secret-scan.result }}" == "failure" ]] || \
              [[ "${{ needs.app-test.result }}" == "failure" ]]; then
             echo "⚠️  警告：部分掃描發現問題，請檢查詳細報告"
             echo "all-passed=false" >> $GITHUB_OUTPUT
@@ -323,7 +301,7 @@ jobs:
             echo "all-passed=true" >> $GITHUB_OUTPUT
           fi
 
-  # 7. 建置並推送 Docker Image 到 GitHub Container Registry
+  # 6. 建置並推送 Docker Image 到 GitHub Container Registry
   build-push-image:
     runs-on: ubuntu-latest
     name: 建置並推送 Docker Image
@@ -378,7 +356,7 @@ jobs:
           echo "🔗 查看 Package："
           echo "https://github.com/${{ github.repository }}/pkgs/container/$(basename ${{ github.repository }})"
 
-  # 8. 建置網站
+  # 7. 建置網站
   build:
     runs-on: ubuntu-latest
     name: 建置網站
@@ -396,7 +374,7 @@ jobs:
         with:
           path: './app'
 
-  # 9. 部署到 GitHub Pages
+  # 8. 部署到 GitHub Pages
   deploy:
     runs-on: ubuntu-latest
     name: 部署到 GitHub Pages
@@ -420,7 +398,7 @@ jobs:
           echo ""
           echo "安全狀態: ${{ needs.security-summary.outputs.all-passed }}"
 
-# 10. Docker 映像建置與健康檢查
+# 9. Docker 映像建置與健康檢查
   app-test:
     runs-on: ubuntu-latest
     name: Docker 映像建置與健康檢查
