@@ -54,12 +54,7 @@ function handleCellClick(e) {
     makeMove(cellIndex, 'X');
     
     if (gameActive && currentPlayer === 'O') {
-        const userInput = prompt("輸入延遲時間（毫秒）");
-        let delay = parseInt(userInput, 10);
-        if (isNaN(delay) || delay < 0 || delay > 5000) {
-            delay = 0;
-        }
-        setTimeout(computerMove, delay);
+        setTimeout(computerMove, 500);
     }
 }
 
